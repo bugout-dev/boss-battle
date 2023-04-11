@@ -67,7 +67,7 @@ Battle.prototype.charactersAttack = function() {
 }
 
 Battle.prototype.trollAttacks = function() {
-  // Rewrite to not overkill players and waste troll damage.
+  // TODO: Rewrite to not overkill players and waste troll damage.
   this.log("Troll attacks...");
   const attackPower = this._troll.getAttackPower()
   const baseDamage = Math.floor(attackPower / this._numChars);
@@ -90,7 +90,7 @@ Battle.prototype.trollAttacks = function() {
   }
 
   Battle.prototype.disableCriticallyWounded = function() {
-
+    // TODO: Move critically wounded players from _characterList to _critcallyWounded.
   };
 
   for (let m = 0; m < bucket.length; m++) {
@@ -121,6 +121,7 @@ Battle.prototype.rollPriority = function() {
 }
 
 Battle.prototype.log = function(...messages) {
+  // TODO: Optionally write battle to file.
   console.log(...messages);
 };
 
