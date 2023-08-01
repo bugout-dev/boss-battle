@@ -24,7 +24,7 @@ const ACTIONS = [ATTACK, HEAL, EVADE, PASS];
 
 const NAMES = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel"
         , "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra",
-        "Tango", "Uniform", "Victor", "Whiskey", "Xray", "Yankee", "Zulu"]
+        "Tango", "Uniform", "Victor", "Whiskey", "Xray", "Yankee", "Zulu"];
 
 const randomAttribute = () => {
   const rand = random.randomInt(ATTRIBUTES.length);

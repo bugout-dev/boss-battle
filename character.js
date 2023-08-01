@@ -1,15 +1,16 @@
 var types = require("./types");
 var random = require("./random");
+const { type } = require("express/lib/response");
 
-function Character(maxHP, name) {
+function Character(maxHP, name, attribute, item) {
   if (!isNaN(name)) {
     name = types.NAMES[name]
   }
   this._name = name;
   this._mapHP = maxHP;
   this._hp = maxHP;
-  this._attribute = types.randomAttribute();
-  this._equipment = types.randomEquipment();
+  this.setAttribute(attribute);
+  this.setEquipment(item);
 };
 
 Character.prototype.getHP = function() {
@@ -34,16 +35,36 @@ Character.prototype.getAttribute = function () {
     return this._attribute
 };
 
+Character.prototype.setAttribute = function(attribute) {
+  if (attribute >= 0 && attribute < 4) {
+    this._attribute = types.ATTRIBUTES[attribute];
+  } else {
+    this._attribute = types.randomAttribute();
+  }
+};
+
 Character.prototype.getEquipment = function() {
   return this._equipment;
 };
 
-Character.prototype.getAction = function() {
+Character.prototype.setEquipment = function(item) {
+  if (item >= 0 && item < 4) {
+    this._equipment = types.EQUIPMENT[item];
+  } else {
+    this._equipment = types.randomEquipment();
+  }
+};
+
+Character.prototype.getAction = function(action) {
   return this._action;
 };
 
 Character.prototype.setAction = function(action) {
-  this._action = action;
+  if (action >= 0 && action < 4) {
+    this._action = types.ACTIONS[action];
+  } else {
+    this._action = types.randomAction();
+  }
 };
 
 Character.prototype.unsetAction = function() {
@@ -58,20 +79,56 @@ Character.prototype.rollPriority = function() {
   return (this._attribute == types.LUCK ? 1 + random.randomInt(4) : 0) + (this._equipment == types.CHARM ? 1 : 0);
 }
 
+Character.prototype.maxRoll = function() {
+  // Makes luck specializations more useful.
+  return 4 + 
+         (this._attribute == types.LUCK ? 1 : 0) + 
+         (this._equipment == types.CHARM ? 1 : 0);
+}
+
+Character.prototype.damageRange = function() {
+  const min = 1 + (this._attribute == types.STR) + (this._equipment == types.SWORD);
+  return {
+    min: min,
+    max: min + this.maxRoll() - 1,
+  }
+}
+
+Character.prototype.healingRange = function() {
+  const min = (this._attribute == types.INT ? 1 : 0) + (this._equipment == types.STAFF ? 1 : 0);
+  return {
+    min: min,
+    max: min + this.maxRoll() - 1,
+  }
+}
+
+Character.prototype.evasionRange = function() {
+  const min = 1 + (this._attribute == types.AGI ? 1 : 0) + (this._equipment == types.ARMOR ? 1 : 0);
+  return {
+    min: min,
+    max: min + this.maxRoll() - 1,
+  }
+}
+
+Character.prototype.actionRoll = function() {
+  return 1 + random.randomInt(this.maxRoll());
+}
+
 Character.prototype.rollAttackDamage = function() {
-  return 1 + 
-         (this._attribute == types.STR ? 1 + random.randomInt(4) : 0) +
+  return this.actionRoll() +
+         (this._attribute == types.STR ? 1 : 0) +
          (this._equipment == types.SWORD ? 1 : 0);
 }
 
 Character.prototype.rollHealing = function() {
-  return (this._attribute == types.INT ? 1 + random.randomInt(4) : 0) +
-         (this._equipment == types.STAFF ? 1 : 0)
+  return this.actionRoll() - 1 +
+         (this._attribute == types.INT ? 1 : 0) +
+         (this._equipment == types.STAFF ? 1 : 0);
 }
 
 Character.prototype.rollEvasion = function() {
-  return 1 +
-         (this._attribute == types.AGI ? 1 + random.randomInt(4) : 0) +
+  return this.actionRoll() +
+         (this._attribute == types.AGI ? 1 : 0) +
          (this._equipment == types.ARMOR ? 1 : 0);
 }
 
@@ -80,6 +137,9 @@ Character.prototype.assessDamage = function(damage) {
   if (this._action == types.EVADE) {
     const evadeValue = this.rollEvasion();
     damageToAssign = Math.max(0, damageToAssign - evadeValue);
+  } else if (this._equipment == types.ARMOR) {
+    // Armor should work even when not evading.
+    damageToAssign = Math.max(0, damageToAssign - 1);
   }
   if (damageToAssign > 0) {
     this._hp = Math.max(this._hp - damageToAssign, 1);
@@ -88,7 +148,7 @@ Character.prototype.assessDamage = function(damage) {
 }
 
 Character.prototype.isCriticallyWounded = function() {
-  return this._hp() <= 1;
+  return this._hp <= 1;
 };
 
 Character.distributeHealing = function(characterList, healing) {
@@ -98,6 +158,7 @@ Character.distributeHealing = function(characterList, healing) {
 };
 
 Character.distHealRecursive = function(characterList, healing) {
+  if (characterList.length == 0) return;
   const minHP = characterList[0].getHP();
   var i = 0;
   while (i < characterList.length && characterList[i].getHP() == minHP && healing > 0) {

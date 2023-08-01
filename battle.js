@@ -7,6 +7,7 @@ function Battle(troll, characterList) {
   this._characterList = characterList;
   this._numChars = characterList.length;
   this._criticallyWounded = [];
+  this._round = 0;
 };
 
 Battle.prototype.getTroll = function () {
@@ -18,15 +19,19 @@ Battle.prototype.getCharacters = function() {
 }
 
 Battle.prototype.fightRound = function() {
+  this._round++;
+  this.log(`<Round ${this._round} >`);
   this.ensureAction();
   var priority = this.rollPriority();
   if (priority) {
     this.charactersAttack();
-    this.trollAttacks();
+    if (this.getResult() == 0) this.trollAttacks();
   } else {
     this.trollAttacks();
-    this.charactersAttack();
+    if (this.getResult() == 0) this.charactersAttack();
   }
+  this.log(`<Round ${this._round} />`);
+  this.log(" ");
 }
 
 Battle.prototype.ensureAction = function() {
@@ -66,8 +71,13 @@ Battle.prototype.charactersAttack = function() {
   this.printBattle();
 }
 
-Battle.prototype.trollAttacks = function() {
-  // TODO: Rewrite to not overkill players and waste troll damage.
+Battle.prototype.trollAttacks = function () {
+  for (let i = 0; i < this._troll.getAttackCount(); i++) {
+    this.singleTrollAttack();
+  }
+}
+
+Battle.prototype.singleTrollAttack = function() {
   this.log("Troll attacks...");
   const attackPower = this._troll.getAttackPower()
   const baseDamage = Math.floor(attackPower / this._numChars);
@@ -89,10 +99,6 @@ Battle.prototype.trollAttacks = function() {
     this.log(char.getName(), "takes damage of", damageTaken);
   }
 
-  Battle.prototype.disableCriticallyWounded = function() {
-    // TODO: Move critically wounded players from _characterList to _critcallyWounded.
-  };
-
   for (let m = 0; m < bucket.length; m++) {
     const index = bucket[m];
     const char = this._characterList[index];
@@ -100,8 +106,30 @@ Battle.prototype.trollAttacks = function() {
     this.log(char.getName(), "takes damage of", damageTaken);
   }
 
+  this.disableCriticallyWounded();
   this.printBattle();
 }
+
+Battle.prototype.disableCriticallyWounded = function() {
+  for (let i = this._characterList.length - 1; i >= 0; i--) {
+    const char = this._characterList[i];
+    if (char.isCriticallyWounded()) {
+      this._criticallyWounded.push(char);
+      this._characterList.splice(i, 1);
+      this._numChars--;
+    }
+  }
+};
+
+Battle.prototype.getResult = function() {
+  if (this._troll.isDead()) {
+    return 1;
+  } else if (this._characterList.length == 0) {
+    return 2;
+  } else {
+    return 0;
+  }
+};
 
 Battle.prototype.rollPriority = function() {
   var trollPriority = 1 + random.randomInt(20);
@@ -126,13 +154,37 @@ Battle.prototype.log = function(...messages) {
 };
 
 Battle.prototype.printBattle = function() {
-  this.log("*** Battle State ***");
+  this.log("<Battle State>");
   this.log("Troll: ", this._troll.toString());
+  this.log("Active characters: ");
   for (let i = 0; i < this._numChars; i++) {
     var char = this._characterList[i]
     this.log(`${char.getName()}: ${char.getStatus()}`);
   }
-  this.log("*** ***")
-}
+  const strCritWounded = this._criticallyWounded.map((char) => char.getName()).join(", ")
+  this.log("Critcally wounded characters:", strCritWounded);
+  this.log("</Battle State>");
+};
+
+Battle.prototype.printResult = function() {
+  switch (this.getResult()) {
+    case 0:
+      this.log("The battls is in progress.");
+      break;
+    case 1:
+      this.log("The heroes killed the troll.");
+      break;
+    case 2:
+      this.log("The troll killed the heroes.");
+      break;
+    default:
+      console.log("An error occured processing the battle result.");
+    break;
+  }
+};
+
+// Battle.prototype.serialize = function() {
+//   return JSON.stringify(this);
+// }
 
 module.exports = Battle;
